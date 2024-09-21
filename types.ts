@@ -5,6 +5,7 @@ interface IUser {
   admin: boolean;
   name: string;
   score: number;
+  emoji: string;
 }
 interface ISend {
   room: string;

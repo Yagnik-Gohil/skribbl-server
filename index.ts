@@ -5,7 +5,12 @@ import { Server, Socket } from "socket.io";
 import { ChatService } from "./chat.service";
 
 const app = express();
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:5173", // Frontend URL
+  methods: ["GET", "POST"],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -25,7 +30,7 @@ app.get("/room/:id", (req, res) => {
 const server = createServer(app);
 
 // Initialize Socket.IO with the HTTP server
-const io = new Server(server);
+const io = new Server(server, { cors: corsOptions });
 
 const chatService = new ChatService();
 
@@ -42,7 +47,7 @@ io.on("connection", (socket: Socket) => {
     // Join Room
     socket.join(data.room);
     // Broadcast
-    socket.broadcast.to(data.room).emit("joined", { user: data });
+    socket.broadcast.to(data.room).emit("joined", data);
   });
 
   // Handle Leave
@@ -52,7 +57,7 @@ io.on("connection", (socket: Socket) => {
     // Leave Room
     socket.leave(data.room);
     // Broadcast
-    socket.broadcast.to(data.room).emit("left", { user: data });
+    socket.broadcast.to(data.room).emit("left", data);
   });
 
   // Handle Typing
@@ -67,11 +72,6 @@ io.on("connection", (socket: Socket) => {
     socket.broadcast.to(data.room).emit("receive", {
       user: data.user,
       message: data.message,
-      matching: true,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
     });
   });
 
