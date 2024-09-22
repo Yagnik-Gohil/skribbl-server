@@ -46,8 +46,14 @@ io.on("connection", (socket: Socket) => {
     chatService.joinRoom(data, socket.id);
     // Join Room
     socket.join(data.room);
+
+    // Get updated room members list
+    const roomMembers = chatService.getRoomMembers(data.room);
+
     // Broadcast
-    socket.broadcast.to(data.room).emit("joined", data);
+    socket.broadcast
+      .to(data.room)
+      .emit("joined", { user: data, members: roomMembers });
   });
 
   // Handle Leave
@@ -56,8 +62,14 @@ io.on("connection", (socket: Socket) => {
     chatService.leaveRoom(data, socket.id);
     // Leave Room
     socket.leave(data.room);
+
+    // Get updated room members list
+    const roomMembers = chatService.getRoomMembers(data.room);
+
     // Broadcast
-    socket.broadcast.to(data.room).emit("left", data);
+    socket.broadcast
+      .to(data.room)
+      .emit("left", { user: data, members: roomMembers });
   });
 
   // Handle Typing

@@ -161,6 +161,16 @@ export class ChatService {
     return this.room[room];
   }
 
+  // Method to get the list of members in a room
+  getRoomMembers(roomId: string): IUser[] {
+    if (!this.room[roomId]) {
+      return [];
+    }
+
+    // Return an array of users from the room's `users` object
+    return Object.values(this.room[roomId].users);
+  }
+
   logRoom() {
     console.log(this.room);
     return this.room;
