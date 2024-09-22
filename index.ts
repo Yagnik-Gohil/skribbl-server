@@ -49,11 +49,8 @@ io.on("connection", (socket: Socket) => {
 
     // Get updated room members list
     const roomMembers = chatService.getRoomMembers(data.room);
-
-    // Broadcast
-    socket.broadcast
-      .to(data.room)
-      .emit("joined", { user: data, members: roomMembers });
+    // Emit the "joined" event to **everyone**, including the user who just joined
+    io.to(data.room).emit("joined", { user: data, members: roomMembers });
   });
 
   // Handle Leave
@@ -93,11 +90,20 @@ io.on("connection", (socket: Socket) => {
 
     socket.broadcast
       .to(data.room)
-      .emit("configuration", { configuration: data });
+      .emit("configuration", data);
   });
 
   // Handle disconnection
   socket.on("disconnect", () => {
     chatService.handleDisconnect(socket.id);
+
+    // const data = {}
+    // User will be in only one room not many.
+    // // Get updated room members list
+    // const roomMembers = chatService.getRoomMembers(data.room);
+    // // Broadcast
+    // socket.broadcast
+    //   .to(data.room)
+    //   .emit("left", { user: data, members: roomMembers });
   });
 });
