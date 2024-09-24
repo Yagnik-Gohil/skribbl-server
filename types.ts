@@ -1,4 +1,5 @@
 type WORD_MODE = "normal" | "hidden" | "both";
+type STATUS = "live" | "lobby" | "word-selection";
 interface IUser {
   id: string;
   room: string;
@@ -20,12 +21,13 @@ interface ITyping {
 }
 
 interface IGameState {
-  isGameStarted: boolean;
+  status: STATUS;
   players: string[]; // Array of clientIds
   currentTurn: number;
-  word: string | null;
+  word: string;
   drawTime: number;
   rounds: number;
+  currentRound: number;
   wordMode: WORD_MODE;
   wordCount: number;
   hints: number;
@@ -33,10 +35,14 @@ interface IGameState {
 
 interface IConfiguration {
   room: string;
-  isGameStarted: boolean;
   drawTime: number;
   hints: number;
   rounds: number;
   wordCount: number;
   wordMode: WORD_MODE;
+}
+
+interface IWordSelected {
+  currentTurn: IUser;
+  word: string;
 }

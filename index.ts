@@ -6,7 +6,7 @@ import { ChatService } from "./chat.service";
 
 const app = express();
 const corsOptions = {
-  origin: "http://localhost:5173", // Frontend URL
+  origin: "*", // Frontend URL
   methods: ["GET", "POST"],
   credentials: true,
 };
@@ -49,14 +49,26 @@ io.on("connection", (socket: Socket) => {
 
     // Get updated room members list
     const roomMembers = chatService.getRoomMembers(data.room);
+
+    // Get current Game state
+    const gameState = chatService.getGameState(data.room);
+
+    // Get current Turn User
+    const currentTurn = chatService.getCurrentPlayerByRoomId(data.room);
+
     // Emit the "joined" event to **everyone**, including the user who just joined
-    io.to(data.room).emit("joined", { user: data, members: roomMembers });
+    io.to(data.room).emit("joined", {
+      user: data,
+      members: roomMembers,
+      gameState: gameState,
+      currentTurn: currentTurn,
+    });
   });
 
   // Handle Leave
   socket.on("leave", (data: IUser) => {
     // Remove user data in Object
-    chatService.leaveRoom(data, socket.id);
+    chatService.leaveRoom(socket.id);
     // Leave Room
     socket.leave(data.room);
 
@@ -85,25 +97,41 @@ io.on("connection", (socket: Socket) => {
   });
 
   // Handle Game Configurations
-  socket.on("configuration", (data: IConfiguration) => {
+  socket.on("update-configuration", (data: IConfiguration) => {
     chatService.updateGameConfiguration(data);
+    socket.broadcast.to(data.room).emit("configuration-updated", data);
+  });
 
-    socket.broadcast
-      .to(data.room)
-      .emit("configuration", data);
+  socket.on("word-selection", (user: IUser) => {
+    chatService.updateGameStatus(user.room, "word-selection");
+    io.to(user.room).emit("word-selection", {
+      currentTurn: user,
+      list: ["apple", "banana shake", "cat and dog"],
+    });
+  });
+
+  socket.on("word-selected", (data: IWordSelected) => {
+    console.log(data)
+    chatService.updateGameStatus(data.currentTurn.room, 'live');
+    chatService.updateGameWord(data.currentTurn.room, data.word);
+    io.to(data.currentTurn.room).emit("game-started", data);
   });
 
   // Handle disconnection
   socket.on("disconnect", () => {
+    // Get room id before disconnect.
+    const user = chatService.getUserByClientId(socket.id);
+
     chatService.handleDisconnect(socket.id);
 
-    // const data = {}
-    // User will be in only one room not many.
-    // // Get updated room members list
-    // const roomMembers = chatService.getRoomMembers(data.room);
-    // // Broadcast
-    // socket.broadcast
-    //   .to(data.room)
-    //   .emit("left", { user: data, members: roomMembers });
+    // Get updated room members list
+    const roomMembers = chatService.getRoomMembers(socket.id);
+
+    if (user) {
+      // Broadcast
+      socket.broadcast
+        .to(user.room)
+        .emit("left", { user: user, members: roomMembers });
+    }
   });
 });
