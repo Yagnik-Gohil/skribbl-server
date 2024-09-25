@@ -11,7 +11,7 @@ export class ChatService {
       status: "lobby",
       players: [],
       currentTurn: 0,
-      word: null,
+      word: "Random Word",
       drawTime: 60,
       hints: 2,
       rounds: 3,
@@ -19,39 +19,6 @@ export class ChatService {
       wordCount: 3,
       wordMode: "normal",
     };
-  }
-
-  handleDisconnect(clientId: string) {
-    const roomId = this.clientRooms[clientId];
-
-    if (roomId && this.room[roomId]) {
-      // Remove the user from the room
-      delete this.room[roomId].users[clientId];
-
-      // Remove the user from the gameState.players list
-      const players = this.room[roomId].gameState.players;
-      this.room[roomId].gameState.players = players.filter(
-        (id) => id !== clientId
-      );
-
-      // Handle if the player was in turn
-      const currentTurn = this.room[roomId].gameState.currentTurn;
-      if (players[currentTurn] === clientId) {
-        this.room[roomId].gameState.currentTurn =
-          this.room[roomId].gameState.players.length > 0
-            ? this.room[roomId].gameState.currentTurn %
-              this.room[roomId].gameState.players.length
-            : 0;
-      }
-
-      // If no users remain in the room, clean up the room
-      if (Object.keys(this.room[roomId].users).length === 0) {
-        delete this.room[roomId]; // Room cleanup
-      }
-    }
-
-    // Remove the client from clientRooms tracking
-    delete this.clientRooms[clientId];
   }
 
   async joinRoom(user: IUser, clientId: string) {
@@ -93,6 +60,12 @@ export class ChatService {
     const roomId = this.clientRooms[clientId];
 
     if (roomId && this.room[roomId]) {
+      const room = this.room[roomId];
+      const userLeaving = room.users[clientId];
+
+      // Check if the user leaving is the admin
+      const isLeavingAdmin = userLeaving?.admin;
+
       // Remove the user from the room
       delete this.room[roomId].users[clientId];
 
@@ -110,6 +83,13 @@ export class ChatService {
             ? this.room[roomId].gameState.currentTurn %
               this.room[roomId].gameState.players.length
             : 0;
+      }
+
+      // If the leaving player was the admin, assign a new admin
+      if (isLeavingAdmin && Object.keys(this.room[roomId].users).length > 0) {
+        // Get the first available user to make admin
+        const newAdminId = Object.keys(this.room[roomId].users)[0];
+        this.room[roomId].users[newAdminId].admin = true;
       }
 
       // If no players remain in the room, clean up the room
@@ -140,9 +120,6 @@ export class ChatService {
     gameState.rounds = configuration.rounds;
     gameState.wordCount = configuration.wordCount;
     gameState.wordMode = configuration.wordMode;
-
-    // Optionally, log the updated game state to ensure the update took place
-    console.log(`Updated game state for room ${roomId}:`, gameState);
   }
 
   async updateGameStatus(roomId: string, status: STATUS) {
@@ -157,6 +134,20 @@ export class ChatService {
 
     // Apply the new configuration to the game state
     gameState.status = status;
+  }
+
+  async incrementCurrentRound(roomId) {
+    // Ensure the room exists in your room data structure
+    if (!this.room[roomId]) {
+      console.error(`Room ${roomId} not found`);
+      return;
+    }
+
+    // Update the game state for the specific room
+    const gameState = this.room[roomId].gameState;
+
+    // Apply the new configuration to the game state
+    gameState.currentRound += 1;
   }
 
   async updateGameWord(roomId: string, word: string) {
@@ -174,6 +165,11 @@ export class ChatService {
   }
 
   getGameState(roomId: string) {
+    const room = this.room[roomId];
+    if (!room) {
+      console.error(`Room ${roomId} not found`);
+      return null;
+    }
     return this.room[roomId].gameState;
   }
 

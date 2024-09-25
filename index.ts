@@ -42,6 +42,7 @@ server.listen(3000, () => {
 io.on("connection", (socket: Socket) => {
   // Handle Join
   socket.on("join", (data: IUser) => {
+    console.log("join");
     // Store user data in Object
     chatService.joinRoom(data, socket.id);
     // Join Room
@@ -65,8 +66,61 @@ io.on("connection", (socket: Socket) => {
     });
   });
 
+  // Handle Typing
+  socket.on("typing", (data: ITyping) => {
+    console.log("typing");
+    socket.broadcast
+      .to(data.room)
+      .emit("typing", { user: data.user, typing: data.typing });
+  });
+
+  // Handle Message
+  socket.on("send", (data: ISend) => {
+    console.log("send");
+    socket.broadcast.to(data.room).emit("receive", {
+      user: data.user,
+      message: data.message,
+    });
+  });
+
+  // Handle Word Guessed Message
+  socket.on("word-guessed", (data: IUser) => {
+    console.log("word-guessed");
+    socket.broadcast.to(data.room).emit("word-guessed", data);
+  });
+
+  // Handle Game Configurations
+  socket.on("update-configuration", (data: IConfiguration) => {
+    console.log("update-configuration");
+    chatService.updateGameConfiguration(data);
+    socket.broadcast.to(data.room).emit("configuration-updated", data);
+  });
+
+  socket.on("word-selection", (user: IUser) => {
+    console.log("word-selection");
+    chatService.updateGameStatus(user.room, "word-selection");
+    chatService.incrementCurrentRound(user.room);
+
+    // Get current Game state
+    const gameState = chatService.getGameState(user.room);
+
+    io.to(user.room).emit("word-selection", {
+      currentTurn: user,
+      gameState: gameState,
+      list: ["apple", "banana shake", "cat and dog"],
+    });
+  });
+
+  socket.on("word-selected", (data: IWordSelected) => {
+    console.log("word-selected");
+    chatService.updateGameStatus(data.currentTurn.room, "live");
+    chatService.updateGameWord(data.currentTurn.room, data.word);
+    io.to(data.currentTurn.room).emit("game-started", data);
+  });
+
   // Handle Leave
   socket.on("leave", (data: IUser) => {
+    console.log("leave");
     // Remove user data in Object
     chatService.leaveRoom(socket.id);
     // Leave Room
@@ -75,63 +129,49 @@ io.on("connection", (socket: Socket) => {
     // Get updated room members list
     const roomMembers = chatService.getRoomMembers(data.room);
 
+    // Get current Game state
+    const gameState = chatService.getGameState(data.room);
+
+    // Get current Turn User
+    const currentTurn = chatService.getCurrentPlayerByRoomId(data.room);
+
     // Broadcast
-    socket.broadcast
-      .to(data.room)
-      .emit("left", { user: data, members: roomMembers });
-  });
-
-  // Handle Typing
-  socket.on("typing", (data: ITyping) => {
-    socket.broadcast
-      .to(data.room)
-      .emit("typing", { user: data.user, typing: data.typing });
-  });
-
-  // Handle Message
-  socket.on("send", (data: ISend) => {
-    socket.broadcast.to(data.room).emit("receive", {
-      user: data.user,
-      message: data.message,
+    socket.broadcast.to(data.room).emit("left", {
+      user: data,
+      members: roomMembers,
+      gameState: gameState,
+      currentTurn: currentTurn,
     });
-  });
-
-  // Handle Game Configurations
-  socket.on("update-configuration", (data: IConfiguration) => {
-    chatService.updateGameConfiguration(data);
-    socket.broadcast.to(data.room).emit("configuration-updated", data);
-  });
-
-  socket.on("word-selection", (user: IUser) => {
-    chatService.updateGameStatus(user.room, "word-selection");
-    io.to(user.room).emit("word-selection", {
-      currentTurn: user,
-      list: ["apple", "banana shake", "cat and dog"],
-    });
-  });
-
-  socket.on("word-selected", (data: IWordSelected) => {
-    console.log(data)
-    chatService.updateGameStatus(data.currentTurn.room, 'live');
-    chatService.updateGameWord(data.currentTurn.room, data.word);
-    io.to(data.currentTurn.room).emit("game-started", data);
   });
 
   // Handle disconnection
   socket.on("disconnect", () => {
+    console.log("disconnect");
     // Get room id before disconnect.
-    const user = chatService.getUserByClientId(socket.id);
+    const data = chatService.getUserByClientId(socket.id);
+    // Remove user data in Object
+    chatService.leaveRoom(socket.id);
 
-    chatService.handleDisconnect(socket.id);
+    if (data) {
+      // Leave Room
+      socket.leave(data.room);
 
-    // Get updated room members list
-    const roomMembers = chatService.getRoomMembers(socket.id);
+      // Get updated room members list
+      const roomMembers = chatService.getRoomMembers(data.room);
 
-    if (user) {
+      // Get current Game state
+      const gameState = chatService.getGameState(data.room);
+
+      // Get current Turn User
+      const currentTurn = chatService.getCurrentPlayerByRoomId(data.room);
+
       // Broadcast
-      socket.broadcast
-        .to(user.room)
-        .emit("left", { user: user, members: roomMembers });
+      socket.broadcast.to(data.room).emit("left", {
+        user: data,
+        members: roomMembers,
+        gameState: gameState,
+        currentTurn: currentTurn,
+      });
     }
   });
 });
