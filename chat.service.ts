@@ -20,7 +20,7 @@ export class ChatService {
       drawTime: 60,
       hints: 2,
       rounds: 3,
-      currentRound: 0,
+      currentRound: 1,
       wordCount: 3,
       wordMode: "normal",
     };
@@ -151,7 +151,7 @@ export class ChatService {
     }
   }
 
-  async incrementCurrentRound(roomId) {
+  async setCurrentRound(roomId: string, currentRound: number) {
     // Ensure the room exists in your room data structure
     if (!this.room[roomId]) {
       console.error(`Room ${roomId} not found`);
@@ -161,8 +161,7 @@ export class ChatService {
     // Update the game state for the specific room
     const gameState = this.room[roomId].gameState;
 
-    // Apply the new configuration to the game state
-    gameState.currentRound += 1;
+    gameState.currentRound = currentRound;
   }
 
   async updateGameWord(roomId: string, word: string) {

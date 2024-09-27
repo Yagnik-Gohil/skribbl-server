@@ -94,7 +94,8 @@ io.on("connection", (socket: Socket) => {
   socket.on("word-selection", (user: IUser) => {
     console.log("word-selection");
     chatService.updateGameStatus(user.room, "word-selection");
-    chatService.incrementCurrentRound(user.room);
+
+    // chatService.setCurrentRound(user.room);
 
     // Get current Game state
     const gameState = chatService.getGameState(user.room);
@@ -125,46 +126,51 @@ io.on("connection", (socket: Socket) => {
 
     // Schedule the "leader-board" and "next-round" events based on the drawTime
     if (gameState && gameState.drawTime) {
-      // Convert drawTime (seconds) to milliseconds
       const drawTimeInMilliseconds = gameState.drawTime * 1000;
-
-      // Schedule the "leader-board" event
       const leaderBoardTime = startTime + drawTimeInMilliseconds;
+
       schedule.scheduleJob(leaderBoardTime, () => {
         console.log("leader-board");
         const leaderBoard = chatService.getLeaderBoard(data.currentTurn.room);
         io.to(data.currentTurn.room).emit("leader-board", leaderBoard);
       });
 
-      // Schedule the "next-round" event 10 seconds after the "leader-board" event
+      // Allow next user to select word
       const nextRoundTime = leaderBoardTime + 10 * 1000; // Add 10 seconds
       schedule.scheduleJob(nextRoundTime, () => {
-        console.log("next-round");
+        // const gameState = chatService.getGameState(data.currentTurn.room);
+        const isLastPlayer =
+          gameState.currentTurn === gameState.players.length - 1;
 
-        const gameState = chatService.getGameState(data.currentTurn.room);
+        if (isLastPlayer) {
+          // Last player finished drawing, move to the next round
+          if (gameState.currentRound < gameState.rounds) {
+            chatService.setCurrentRound(
+              data.currentTurn.room,
+              gameState.currentRound + 1
+            );
+          } else {
+            // If all rounds are completed, end the game
+            chatService.updateGameStatus(data.currentTurn.room, "lobby");
+            // Reset currentTurn to the first player (index 0)
+            chatService.setCurrentRound(data.currentTurn.room, 0);
 
-        if (gameState.currentRound < gameState.rounds) {
-          chatService.updateGameStatus(data.currentTurn.room, "word-selection");
-          chatService.incrementCurrentRound(data.currentTurn.room);
+            const roomMembers = chatService.getRoomMembers(
+              data.currentTurn.room,
+              true
+            );
+            io.to(data.currentTurn.room).emit("result", roomMembers);
+            return;
+          }
 
-          // Get current Game state
-          const gameState = chatService.getGameState(data.currentTurn.room);
-          const roomMembers = chatService.getRoomMembers(data.currentTurn.room);
-
-          io.to(data.currentTurn.room).emit("word-selection", {
-            currentTurn: chatService.getNextPlayerByRoomId(
-              data.currentTurn.room
-            ),
-            gameState: gameState,
-            roomMembers: roomMembers,
-          });
-        } else {
-          chatService.updateGameStatus(data.currentTurn.room, "lobby");
-
-          const roomMembers = chatService.getRoomMembers(data.currentTurn.room, true);
-
-          io.to(data.currentTurn.room).emit("result", roomMembers);
         }
+        chatService.updateGameStatus(data.currentTurn.room, "word-selection");
+        // Emit the word-selection event for the next player
+        io.to(data.currentTurn.room).emit("word-selection", {
+          currentTurn: chatService.getNextPlayerByRoomId(data.currentTurn.room),
+          gameState: chatService.getGameState(data.currentTurn.room),
+          roomMembers: chatService.getRoomMembers(data.currentTurn.room),
+        });
       });
     }
   });
