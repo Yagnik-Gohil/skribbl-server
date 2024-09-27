@@ -1,5 +1,5 @@
 type WORD_MODE = "normal" | "hidden" | "both";
-type STATUS = "live" | "lobby" | "word-selection";
+type STATUS = "live" | "lobby" | "word-selection"; // Add leader board and result
 interface IUser {
   id: string;
   room: string;
@@ -25,6 +25,7 @@ interface IGameState {
   players: string[]; // Array of clientIds
   currentTurn: number;
   word: string;
+  startTime: number;
   drawTime: number;
   rounds: number;
   currentRound: number;
@@ -45,4 +46,11 @@ interface IConfiguration {
 interface IWordSelected {
   currentTurn: IUser;
   word: string;
+}
+
+interface ILeaderBoard {
+  id: string;
+  name: string;
+  score: number;
+  emoji: string;
 }
