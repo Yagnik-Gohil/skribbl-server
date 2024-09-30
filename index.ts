@@ -175,6 +175,21 @@ io.on("connection", (socket: Socket) => {
     }
   });
 
+  socket.on("drawing", (data) => {
+    // Broadcast the drawing data to all other clients
+    socket.broadcast.to(data.room).emit("drawing", data);
+  });
+
+  socket.on("stop", (data) => {
+    // Broadcast the drawing data to all other clients
+    socket.broadcast.to(data.room).emit("stop", data);
+  });
+
+  socket.on("clear", (room) => {
+    // Broadcast the drawing data to all other clients
+    socket.broadcast.to(room).emit("clear");
+  });
+
   // Handle Word Guessed Message
   socket.on("word-guessed", (user: IUser) => {
     console.log("word-guessed");
