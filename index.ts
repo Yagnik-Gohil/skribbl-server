@@ -162,7 +162,6 @@ io.on("connection", (socket: Socket) => {
             io.to(data.currentTurn.room).emit("result", roomMembers);
             return;
           }
-
         }
         chatService.updateGameStatus(data.currentTurn.room, "word-selection");
         // Emit the word-selection event for the next player
@@ -190,6 +189,10 @@ io.on("connection", (socket: Socket) => {
     socket.broadcast.to(room).emit("clear");
   });
 
+  socket.on("restart", (room) => {
+    io.to(room).emit("restart");
+  });
+
   // Handle Word Guessed Message
   socket.on("word-guessed", (user: IUser) => {
     console.log("word-guessed");
@@ -198,6 +201,12 @@ io.on("connection", (socket: Socket) => {
     chatService.updateLeaderBoard(socket.id, user);
 
     socket.broadcast.to(user.room).emit("word-guessed", user);
+  });
+
+  socket.on("like", (data: ILike) => {
+    console.log("like");
+    chatService.updateDrawerScore(data);
+    io.to(data.user.room).emit("like", data);
   });
 
   // Handle Leave

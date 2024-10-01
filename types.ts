@@ -54,3 +54,9 @@ interface ILeaderBoard {
   score: number;
   emoji: string;
 }
+
+interface ILike {
+  isLiked: boolean;
+  currentTurn: IUser;
+  user: IUser;
+}

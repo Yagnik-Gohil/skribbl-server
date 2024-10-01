@@ -212,6 +212,33 @@ export class ChatService {
     this.room[roomId].users[clientId].score += score;
   }
 
+  async updateDrawerScore(data: ILike) {
+    const roomId = data.user.room;
+    
+    // Ensure the room exists in your room data structure
+    if (!this.room[roomId]) {
+      console.error(`Room ${roomId} not found`);
+      return;
+    }
+  
+    const clientId = this.room[roomId].gameState.players[this.room[roomId].gameState.currentTurn]; // The user who is currently drawing (the drawer)
+  
+    // Check if the drawer exists in the room
+    if (!this.room[roomId].users[clientId]) {
+      console.error(`Drawer ${clientId} not found in room ${roomId}`);
+      return;
+    }
+  
+    // Increment score by 1 if liked, else decrement by 1
+    const scoreChange = data.isLiked ? 1 : -1;
+  
+    // Update the drawer's score
+    this.room[roomId].leaderBoard[clientId] =
+      (this.room[roomId].leaderBoard[clientId] || 0) + scoreChange;
+  
+    this.room[roomId].users[clientId].score += scoreChange;
+  }  
+
   getGameState(roomId: string) {
     const room = this.room[roomId];
     if (!room) {
